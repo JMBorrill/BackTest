@@ -83,8 +83,7 @@ an integrator who proves their error handling by making a live system fail.
 | Authorised production test account | Northwind | 1 Oct | Service owner | ⬜ Requested 12 Sep |
 | Technical scoping call booked | Halyard | 19 Sep | Me | ⬜ |
 
-Each dependency names one owner and one date. A dependency with neither is a
-wish.
+Each dependency names one owner and one date.
 
 ---
 

@@ -12,6 +12,7 @@ python scripts/make_synthetic_data.py
 
 That writes `SYNTH.csv` — 1,500 bars of a seeded random walk. It is **not
 market data**. The seed makes it identical on every machine, which is what
-lets the tests and the Postman assertions check exact values.
+lets `test_synth_dataset_still_produces_the_published_numbers` assert the
+exact figures quoted in the README.
 
 CSVs are git-ignored; this README is not.

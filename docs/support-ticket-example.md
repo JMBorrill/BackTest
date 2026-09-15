@@ -16,11 +16,6 @@
 > failure and write to a customer about it — not to claim I have handled this
 > ticket for an employer.
 
-The bearer token used here is this demonstration API's simplified auth model.
-It is not a representation of any payments provider's production
-authentication; real integrations follow that provider's current
-documentation and access controls.
-
 ---
 
 ## The scenario

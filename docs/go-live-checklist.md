@@ -43,7 +43,7 @@ with one approved, low-impact request and nothing more.
 
 ## Behaviour — proved in sandbox
 
-- [ ] The full collection passes against sandbox: 6 requests, 23 assertions.
+- [ ] The full Postman collection passes against sandbox with no failures.
 - [ ] Both 401 cases are understood, not just passing — a missing token and
       an invalid token return different messages, and support knows what each
       one means.
@@ -82,9 +82,8 @@ Stated here rather than discovered later. This is a demonstration project,
 not a production service:
 
 - A single shared bearer token, with no per-customer credentials and no
-  rotation. It is a simplified model chosen to exercise a real 401 path, and
-  is not how any particular payments provider authenticates — a real
-  integration follows that provider's current documentation and controls.
+  rotation. It is a simplified model chosen to exercise a real 401 path, not
+  a template for a production integration.
 - No persistence, so there is no run history to audit.
 - The workload runs synchronously, so a very long date range holds the
   request open.

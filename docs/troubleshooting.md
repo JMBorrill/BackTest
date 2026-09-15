@@ -1,8 +1,9 @@
 # Troubleshooting
 
-The five failures that actually came up while building and testing this API,
-in the order you are likely to hit them. Each one is reproducible from the
-Postman collection.
+The failures that come up while integrating against this API, in the order
+you are likely to hit them. Every one below except the 500 is reproducible
+from the Postman collection; the 500 is forced from the test suite, because
+nothing in the shipped API triggers it.
 
 ---
 
@@ -35,11 +36,6 @@ to confirm what you are actually talking to.
 Requests 3 and 4 of the Postman collection are this pair, kept side by side
 so the difference can be shown rather than described.
 
-> **Scope.** The single shared bearer token here is this demonstration API's
-> simplified auth model, not a representation of any payments provider's
-> production authentication. Real integrations follow that provider's current
-> documentation, key management and access controls.
-
 ---
 
 ## 422 `validation_failed`
@@ -52,10 +48,10 @@ so the difference can be shown rather than described.
 **Cause.** Valid JSON, impossible configuration — here a 50-day fast average
 against a 20-day slow one.
 
-**Diagnosis.** `fields[].path` names the input to change. This was worth
-getting right: the check was first written as a whole-model validator, which
-reported the path as the model rather than the field, so the response said
-something was wrong without saying what.
+**Diagnosis.** `fields[].path` names the input to change. The cross-field
+check is a Pydantic field validator rather than a model validator for exactly
+this reason: a model validator reports the path as the model, so the response
+says something is wrong without saying what.
 
 **Fix.** Correct the named field. Unknown fields are rejected too — a
 request with `fast_windows` (plural) is a 422, not a silently ignored typo
@@ -120,22 +116,56 @@ Copy .env.example to .env and fill them in.
 
 **Cause.** `API_TOKEN` is not set and has no default.
 
-**Diagnosis.** This originally behaved much worse: configuration was read
-lazily on first use, so the server started cleanly and the first request came
-back as an opaque `500 internal_error`. The traceback was in the log, not the
-response, which is correct — but it meant a startup problem presented as a
-runtime one. Configuration is now read at startup.
+**Diagnosis.** Configuration is read in `create_app()`, not lazily on first
+use. Read lazily, a missing variable would start the server cleanly and turn
+the first customer request into an opaque `500 internal_error` — a startup
+problem presenting as a runtime one.
 
 **Fix.** `cp .env.example .env` and set `API_TOKEN`.
 
-**Prevention.** Fail at startup, not on the first customer request. A missing
-credential that only shows up under traffic is a production incident.
+**Prevention.** A missing credential that only shows up under traffic is a
+production incident. Read configuration at startup.
+
+---
+
+## Server starts, but every request is 401 `unauthenticated`
+
+```json
+{"error": {"code": "unauthenticated", "message": "Bearer token invalid"}}
+```
+
+**Cause.** `API_TOKEN` is set to an empty string — what `cp .env.example .env`
+leaves behind if you never edit the file.
+
+**Diagnosis.** The message says *invalid*, not *missing*, so credentials are
+arriving and the server has something to compare them against. If your client
+is definitely sending the right token, the value on the server side is the
+suspect.
+
+**Fix.** Set `API_TOKEN` in `.env` and restart. An empty value is now rejected
+at startup with the same `ConfigError` as a missing one, so this should not
+survive a restart.
+
+---
+
+## 422 `validation_failed` on a date range
+
+Two different problems share this code, and the `fields[].message` separates
+them:
+
+| `fields[0].message` | Means |
+|---|---|
+| `no data in this date range` | The symbol exists but has no bars between `start` and `end` — usually a range outside the data entirely. |
+| `date range holds fewer bars than slow_window` | The range has bars, just not enough to fill the slow moving average. |
+
+The first needs a different range; the second needs a longer range or a
+smaller `slow_window`.
 
 ---
 
 ## When to escalate
 
-The four cases above are answerable from the response body alone. Escalate
+The cases above are answerable from the response body alone. Escalate
 to engineering when:
 
 - The response is `500 internal_error` — the body carries only a
