@@ -51,7 +51,7 @@
         </div>
         <div>
           <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Surface</dt>
-          <dd style="margin: 0; font-size: 14px;">2 endpoints, 2 environments, 6 Postman requests</dd>
+          <dd style="margin: 0; font-size: 14px;">2 endpoints, 2 environments, 7 Postman requests, a Python client</dd>
         </div>
         <div>
           <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Deliverables</dt>
@@ -102,7 +102,7 @@
 
   <section id="postman" style="border-top: 1px solid var(--color-divider); padding: 56px 0;">
     <h2 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: var(--space-2);">02 — What goes wrong, and how I found it</h2>
-    <p style="max-width: 62ch; margin-bottom: var(--space-8); opacity: 0.85;">Each of these is reproducible from the collection. Select one for the cause, the diagnosis, and the fix.</p>
+    <p style="max-width: 62ch; margin-bottom: var(--space-8); opacity: 0.85;">Every one of these except the 500 is reproducible from the Postman collection; the 500 is forced from the test suite, because nothing reachable from outside triggers it. Select one for the cause, the diagnosis, and the fix.</p>
 
     <div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start;">
       <div style="flex: 1 1 420px; min-width: 0; overflow-x: auto;">
@@ -247,7 +247,7 @@ const SCENARIOS = [
     body: `{ "error": { "code": "validation_failed",
     "fields": [ { "path": "fast_window",
       "message": "must be less than slow_window" } ] } }`,
-    fix: "First written as a whole-model validator, which reported the path as the model rather than the field - the response said something was wrong without saying what. Moved to a field validator so the caller is pointed at the input to change." },
+    fix: "The cross-field check is a Pydantic field validator, not a model validator: a model validator reports the path as the model rather than the field, so the response says something is wrong without saying what. As a field validator it points at the input to change." },
   { code: "422", name: "Unknown symbol", assertion: "code + available list",
     trigger: "A symbol with no data configured - the equivalent of a customer requesting a product they have not been enabled for.",
     body: `{ "error": { "code": "unknown_symbol",
@@ -259,10 +259,10 @@ const SCENARIOS = [
     "message": "Request body is not valid JSON" } }`,
     fix: "400 rather than 422 is itself the signal: the body never reached the schema, so there is no field to name. A 422 with a field path means the JSON parsed and the values were wrong." },
   { code: "500", name: "Unexpected server error", assertion: "request_id, no stack trace",
-    trigger: "Originally: starting the server with API_TOKEN unset. Configuration was read lazily, so a missing variable surfaced as an opaque 500 on the first request instead of a startup failure.",
+    trigger: "Any unhandled exception in the request path. Nothing reachable from outside produces one, so it is exercised by making a dependency raise inside the test suite.",
     body: `{ "error": { "code": "internal_error",
     "request_id": "req_9e4635" } }`,
-    fix: "Configuration is now read at startup and the server refuses to start with a named error. The 500 handler stays, and is the escalation case: the body carries only an id, the traceback goes to the log under the same id, and the useful thing a customer can do is quote it." }
+    fix: "This is the escalation case: the body carries only an id, the traceback goes to the log under the same id, and the useful thing a customer can do is quote it. Related, and the reason configuration is read at startup: read lazily, a missing or empty API_TOKEN would surface as an opaque 500 on the first request instead of a named startup failure." }
 ];
 
 const CHECKS = [
@@ -270,7 +270,7 @@ const CHECKS = [
   { title: "Environments separated", detail: "Sandbox and production as two Postman environment files, not one with an edited base_url." },
   { title: "Tokens as secret variables", detail: "api_token typed secret and committed empty in both files. No token in the collection, a saved example, or a screenshot on a ticket." },
   { title: "Different token per environment", detail: "Production and sandbox tokens differ, and the customer has been told which is which." },
-  { title: "Collection green against sandbox", detail: "6 requests, 23 assertions, no failures. This is where error handling is proved - breaking things in sandbox is free." },
+  { title: "Collection green against sandbox", detail: "The full collection passes with no failures. This is where error handling is proved - breaking things in sandbox is free." },
   { title: "Authorised test account", detail: "A production account created for this purpose, with no real customer data and no financial impact." },
   { title: "Approved test payload and window", detail: "The smallest request that still proves the integration, agreed in advance with the customer and the service owner, at a time when someone can act." },
   { title: "One approved production call", detail: "That single low-impact request, made from the test account inside the agreed window, and the response read and recorded. Nothing beyond it." },
