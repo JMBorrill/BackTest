@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+data/*.csv
+!data/README.md
+node_modules/
+.DS_Store

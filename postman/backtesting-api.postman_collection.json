@@ -1,0 +1,324 @@
+{
+  "info": {
+    "_postman_id": "c4e8a115-9b27-4f60-8d33-1a6e0b72c9f4",
+    "name": "Backtesting API",
+    "description": "Reproduces a customer onboarding workflow against the sandbox: check the service is up, make one successful authenticated call, then the four failures that come up most often during integration.\n\nRequests 3 and 4 are the two halves of one diagnosis - a missing token and an invalid one are both 401 unauthenticated, and only the message tells them apart.\n\nSelect the sandbox environment and set api_token before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('response is JSON', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Unauthenticated. Run this first - if it fails, base_url is wrong or the server is not running, and nothing below will be meaningful.",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.test('reports the environment it is running as', function () {",
+              "    pm.expect(pm.response.json().environment).to.eql('sandbox');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Run a backtest (authenticated)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/backtests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "backtests"
+          ]
+        },
+        "description": "The customer's normal request. Inherits bearer auth from the collection.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"SYNTH\",\n  \"start\": \"2019-01-01\",\n  \"end\": \"2024-12-31\",\n  \"fast_window\": 20,\n  \"slow_window\": 50\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('returns the four metrics', function () {",
+              "    ['total_return', 'cagr', 'max_drawdown', 'trades']",
+              "      .forEach(k => pm.expect(body.metrics).to.have.property(k));",
+              "});",
+              "pm.test('returns a benchmark to compare against', function () {",
+              "    pm.expect(body.benchmark).to.have.property('total_return');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Missing bearer token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/backtests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "backtests"
+          ]
+        },
+        "description": "No Authorization header at all. The first thing that happens to anyone who imports the collection, because the committed environments ship with an empty token. Compare the message with request 4.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"SYNTH\",\n  \"start\": \"2019-01-01\",\n  \"end\": \"2024-12-31\",\n  \"fast_window\": 20,\n  \"slow_window\": 50\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+              "pm.test('code is unauthenticated', function () {",
+              "    pm.expect(pm.response.json().error.code).to.eql('unauthenticated');",
+              "});",
+              "pm.test('challenges with WWW-Authenticate', function () {",
+              "    pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Invalid bearer token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/backtests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "backtests"
+          ]
+        },
+        "description": "A token that is sent correctly but is not the right value - a stale or rotated secret. Paired with request 3 on purpose: both are 401 unauthenticated, and the message is the only thing that separates 'you are not sending credentials' from 'your credentials are out of date'. That distinction is the one the worked support ticket in docs/support-ticket-example.md turns on.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"SYNTH\",\n  \"start\": \"2019-01-01\",\n  \"end\": \"2024-12-31\",\n  \"fast_window\": 20,\n  \"slow_window\": 50\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "not-the-real-token",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+              "const error = pm.response.json().error;",
+              "pm.test('same code as a missing token', () => pm.expect(error.code).to.eql('unauthenticated'));",
+              "pm.test('message says invalid, not missing', function () {",
+              "    pm.expect(error.message).to.eql('Bearer token invalid');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Invalid parameters",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/backtests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "backtests"
+          ]
+        },
+        "description": "fast_window of 50 against a slow_window of 20. Valid JSON, impossible configuration - the response must name the field to change.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"SYNTH\",\n  \"start\": \"2019-01-01\",\n  \"end\": \"2024-12-31\",\n  \"fast_window\": 50,\n  \"slow_window\": 20\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+              "const error = pm.response.json().error;",
+              "pm.test('code is validation_failed', () => pm.expect(error.code).to.eql('validation_failed'));",
+              "pm.test('names the field the caller must change', function () {",
+              "    pm.expect(error.fields[0].path).to.eql('fast_window');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Unknown symbol",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/v1/backtests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "v1",
+            "backtests"
+          ]
+        },
+        "description": "A symbol with no data configured - the sandbox equivalent of a customer requesting a product they have not been enabled for.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"symbol\": \"NOPE\",\n  \"start\": \"2019-01-01\",\n  \"end\": \"2024-12-31\",\n  \"fast_window\": 20,\n  \"slow_window\": 50\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+              "const error = pm.response.json().error;",
+              "pm.test('code is unknown_symbol', () => pm.expect(error.code).to.eql('unknown_symbol'));",
+              "pm.test('lists the symbols that do exist', function () {",
+              "    pm.expect(error.message).to.include('Available');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

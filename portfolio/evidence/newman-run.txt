@@ -1,0 +1,62 @@
+Backtesting API
+
+→ 1. Health check
+  GET http://127.0.0.1:8310/health [200 OK, 164B, 14ms]
+  ✓  response is JSON
+  ✓  200 OK
+  ✓  reports the environment it is running as
+
+→ 2. Run a backtest (authenticated)
+  POST http://127.0.0.1:8310/v1/backtests [200 OK, 317B, 15ms]
+  ✓  response is JSON
+  ✓  200 OK
+  ✓  returns the four metrics
+  ✓  returns a benchmark to compare against
+
+→ 3. Missing bearer token
+  POST http://127.0.0.1:8310/v1/backtests [401 Unauthorized, 254B, 1ms]
+  ✓  response is JSON
+  ✓  401 Unauthorized
+  ✓  code is unauthenticated
+  ✓  challenges with WWW-Authenticate
+
+→ 4. Invalid bearer token
+  POST http://127.0.0.1:8310/v1/backtests [401 Unauthorized, 254B, 1ms]
+  ✓  response is JSON
+  ✓  401 Unauthorized
+  ✓  same code as a missing token
+  ✓  message says invalid, not missing
+
+→ 5. Invalid parameters
+  POST http://127.0.0.1:8310/v1/backtests [422 Unprocessable Entity, 296B, 1ms]
+  ✓  response is JSON
+  ✓  422 Unprocessable Entity
+  ✓  code is validation_failed
+  ✓  names the field the caller must change
+
+→ 6. Unknown symbol
+  POST http://127.0.0.1:8310/v1/backtests [422 Unprocessable Entity, 231B, 2ms]
+  ✓  response is JSON
+  ✓  422 Unprocessable Entity
+  ✓  code is unknown_symbol
+  ✓  lists the symbols that do exist
+
+┌─────────────────────────┬─────────────────┬─────────────────┐
+│                         │        executed │          failed │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│              iterations │               1 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│                requests │               6 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│            test-scripts │              12 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│      prerequest-scripts │               0 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│              assertions │              23 │               0 │
+├─────────────────────────┴─────────────────┴─────────────────┤
+│ total run duration: 132ms                                   │
+├─────────────────────────────────────────────────────────────┤
+│ total data received: 608B (approx)                          │
+├─────────────────────────────────────────────────────────────┤
+│ average response time: 5ms [min: 1ms, max: 15ms, s.d.: 6ms] │
+└─────────────────────────────────────────────────────────────┘

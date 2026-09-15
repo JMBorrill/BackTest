@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-132d2d67-96ea-4015-98ba-f5eb640adb5d/styles.css">
+<script src="_ds/industry-132d2d67-96ea-4015-98ba-f5eb640adb5d/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; }
+  a { color: var(--color-accent-700); }
+  a:hover { color: var(--color-accent-900); }
+  pre { margin: 0; }
+  section[id] { scroll-margin-top: var(--space-6); }
+</style>
+</helmet>
+<div style="max-width: 1180px; margin: 0 auto; padding: 0 var(--space-6) 96px;">
+
+  <nav class="nav" style="padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--color-divider); flex-wrap: wrap; gap: var(--space-6);">
+    <span class="nav-brand">Backtesting API</span>
+    <a href="#api">The workflow</a>
+    <a href="#postman">Failures</a>
+    <a href="#readiness">Go-live</a>
+  </nav>
+
+  <header style="display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; padding: 64px 0 56px;">
+    <div style="flex: 1 1 420px; min-width: 0;">
+      <div style="display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-6);">
+        <span class="tag tag-accent">Python</span>
+        <span class="tag tag-accent">pandas</span>
+        <span class="tag tag-accent">REST API</span>
+        <span class="tag tag-outline">Postman</span>
+      </div>
+      <h1 style="font-size: clamp(36px, 5vw, 58px); margin: 0 0 var(--space-6); letter-spacing: -0.02em; text-wrap: balance;">Testing an API integration the way a customer would</h1>
+      <p style="font-size: 18px; line-height: 1.6; max-width: 62ch; margin: 0;">I built a small authenticated REST API and used Postman to reproduce an onboarding workflow: verify the sandbox, make one successful call, then work through the failures integrations actually hit. The backtest it runs is only the sample workload — the troubleshooting is the point.</p>
+    </div>
+    <div class="card blueprint" style="flex: 1 1 260px; min-width: 0; padding: var(--space-6); gap: 0;">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <dl style="display: grid; gap: var(--space-4); margin: 0;">
+        <div>
+          <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Role</dt>
+          <dd style="margin: 0; font-size: 14px;">Built the API, then tested it as its own first customer</dd>
+        </div>
+        <div>
+          <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Stack</dt>
+          <dd style="margin: 0; font-size: 14px;">Python, FastAPI, pandas, Postman, bearer-token auth</dd>
+        </div>
+        <div>
+          <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Surface</dt>
+          <dd style="margin: 0; font-size: 14px;">2 endpoints, 2 environments, 6 Postman requests</dd>
+        </div>
+        <div>
+          <dt style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700);">Deliverables</dt>
+          <dd style="margin: 0; font-size: 14px;">Collection, troubleshooting guide, go-live checklist, simulated support ticket and implementation tracker</dd>
+        </div>
+      </dl>
+    </div>
+  </header>
+
+  <section id="api" style="border-top: 1px solid var(--color-divider); padding: 56px 0;">
+    <h2 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: var(--space-2);">01 — The customer workflow</h2>
+    <p style="max-width: 62ch; margin-bottom: var(--space-8); opacity: 0.85;">The three calls an integration makes on day one. Pick one to see what it sends and what comes back.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start;">
+      <div style="flex: 1 1 240px; min-width: 0; max-width: 300px; display: grid; gap: var(--space-3);">
+        <sc-for list="{{ endpoints }}" as="ep" hint-placeholder-count="3">
+          <button type="button" onClick="{{ ep.select }}" aria-pressed="{{ ep.pressed }}" style="text-align: left; cursor: pointer; font: inherit; color: inherit; padding: var(--space-4); background: {{ ep.bg }}; border: 1px solid var(--color-divider); border-radius: 0; display: grid; gap: var(--space-1);">
+            <span style="font-family: var(--font-heading); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75;">Step {{ ep.step }} · {{ ep.method }}</span>
+            <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;">{{ ep.path }}</span>
+            <span style="font-size: 13px; opacity: 0.8;">{{ ep.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <div style="flex: 3 1 440px; min-width: 0; display: grid; gap: var(--space-6);">
+        <div class="blueprint" style="padding: 0; min-width: 0;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider); flex-wrap: wrap;">
+            <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;">Request</span>
+            <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; opacity: 0.7;">{{ active.reqLine }}</span>
+          </div>
+          <pre style="background: var(--code-bg, var(--color-accent-900)); color: var(--code-fg, var(--color-bg)); margin: 0; padding: var(--space-6); overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6;">{{ active.request }}</pre>
+        </div>
+
+        <div class="blueprint" style="padding: 0; min-width: 0;">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider); flex-wrap: wrap;">
+            <span style="font-family: var(--font-heading); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;">Response</span>
+            <span class="tag tag-accent" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{ active.status }}</span>
+          </div>
+          <pre style="background: var(--code-bg, var(--color-accent-900)); color: var(--code-fg, var(--color-bg)); margin: 0; padding: var(--space-6); overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6;">{{ active.response }}</pre>
+        </div>
+
+        <p style="font-size: 14px; opacity: 0.85; margin: 0;">{{ active.note }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="postman" style="border-top: 1px solid var(--color-divider); padding: 56px 0;">
+    <h2 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: var(--space-2);">02 — What goes wrong, and how I found it</h2>
+    <p style="max-width: 62ch; margin-bottom: var(--space-8); opacity: 0.85;">Each of these is reproducible from the collection. Select one for the cause, the diagnosis, and the fix.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start;">
+      <div style="flex: 1 1 420px; min-width: 0; overflow-x: auto;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 78px;">Status</th>
+              <th>Case</th>
+              <th style="width: 96px;">Assertion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ scenarios }}" as="sc" hint-placeholder-count="7">
+              <tr style="background: {{ sc.bg }};">
+                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--color-accent-700);">{{ sc.code }}</td>
+                <td>
+                  <button type="button" onClick="{{ sc.select }}" aria-pressed="{{ sc.pressed }}" style="font: inherit; color: inherit; background: transparent; border: 0; border-radius: 0; padding: 0; text-align: left; cursor: pointer;">{{ sc.name }}</button>
+                </td>
+                <td style="font-size: 12px; opacity: 0.7;">{{ sc.assertion }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card blueprint" style="flex: 1 1 300px; min-width: 0; padding: var(--space-6); gap: var(--space-3);">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <span class="card-kicker">{{ activeScenario.code }} · {{ activeScenario.name }}</span>
+        <div>
+          <h4 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: var(--space-1);">Trigger</h4>
+          <p style="font-size: 14px; margin: 0 0 var(--space-4); opacity: 0.85;">{{ activeScenario.trigger }}</p>
+          <h4 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: var(--space-1);">What the API returned</h4>
+          <pre style="background: var(--code-bg, var(--color-accent-900)); color: var(--code-fg, var(--color-bg)); padding: var(--space-4); margin: 0 0 var(--space-4); overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55;">{{ activeScenario.body }}</pre>
+          <h4 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: var(--space-1);">Resolution</h4>
+          <p style="font-size: 14px; margin: 0; opacity: 0.85;">{{ activeScenario.fix }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="readiness" style="border-top: 1px solid var(--color-divider); padding: 56px 0;">
+    <h2 style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-accent-700); margin-bottom: var(--space-2);">03 — Go-live checklist</h2>
+    <p style="max-width: 62ch; margin-bottom: var(--space-6); opacity: 0.85;">What I check before a customer points at anything other than sandbox.</p>
+
+    <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-6);">
+      <span style="font-family: var(--font-heading); font-size: 40px; line-height: 1;">{{ doneCount }}</span>
+      <span style="font-size: 14px; opacity: 0.7;">of {{ totalCount }} checks cleared</span>
+      <button type="button" class="btn btn-secondary" onClick="{{ resetChecks }}" style="margin-left: auto;">Reset</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: var(--space-3);">
+      <sc-for list="{{ checks }}" as="ck" hint-placeholder-count="10">
+        <button type="button" onClick="{{ ck.toggle }}" aria-pressed="{{ ck.pressed }}" style="display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: var(--space-3); align-items: start; text-align: left; font: inherit; color: inherit; cursor: pointer; padding: var(--space-4); background: {{ ck.bg }}; border: 1px solid var(--color-divider); border-radius: 0;">
+          <span aria-hidden="true" style="width: 18px; height: 18px; border: 1px solid var(--color-accent-700); display: grid; place-items: center; font-size: 12px; line-height: 1; color: var(--color-accent-900); background: {{ ck.boxBg }};">{{ ck.mark }}</span>
+          <span>
+            <span style="display: block; font-family: var(--font-heading); font-size: 16px;">{{ ck.title }}</span>
+            <span style="display: block; font-size: 13.5px; opacity: 0.8;">{{ ck.detail }}</span>
+          </span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;codeField&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;steel&quot;,&quot;paper&quot;],&quot;default&quot;:&quot;steel&quot;,&quot;tsType&quot;:&quot;\&quot;steel\&quot; | \&quot;paper\&quot;&quot;,&quot;section&quot;:&quot;Code panes&quot;}}">
+const ENDPOINTS = [
+  {
+    step: "1", method: "GET", path: "/health", label: "Confirm the sandbox is up",
+    reqLine: "GET {{base_url}}/health",
+    status: "200 OK",
+    request: `(no authentication, no body)`,
+    response: `{
+  "status": "ok",
+  "environment": "sandbox"
+}`,
+    note: "Unauthenticated on purpose. It is the cheapest way to separate \"the API is down\" from \"our credentials are wrong\", and it names the environment - so a request that looks like production but answers \"sandbox\" is caught before anything else is debugged."
+  },
+  {
+    step: "2", method: "POST", path: "/v1/backtests", label: "The customer's normal request",
+    reqLine: "POST {{base_url}}/v1/backtests",
+    status: "200 OK",
+    request: `Authorization: Bearer {{api_token}}
+Content-Type: application/json
+
+{
+  "symbol": "SYNTH",
+  "start": "2019-01-01",
+  "end": "2024-12-31",
+  "fast_window": 20,
+  "slow_window": 50
+}`,
+    response: `{
+  "symbol": "SYNTH",
+  "start": "2019-01-02",
+  "end": "2024-10-01",
+  "bars": 1500,
+  "metrics": {
+    "total_return": -0.1908,
+    "cagr": -0.0349,
+    "max_drawdown": -0.3079,
+    "trades": 20
+  },
+  "benchmark": { "total_return": 0.1808 }
+}`,
+    note: "Synchronous - validate, run, return. SYNTH is a seeded random walk, not market data, and every figure on this page comes from it. The strategy loses to buy and hold, which is what a moving-average crossover does to a random walk; it is reported as it came out."
+  },
+  {
+    step: "3", method: "POST", path: "/v1/backtests", label: "The same call without a token",
+    reqLine: "POST {{base_url}}/v1/backtests",
+    status: "401 Unauthorized",
+    request: `Content-Type: application/json
+
+{
+  "symbol": "SYNTH",
+  "start": "2019-01-01",
+  "end": "2024-12-31",
+  "fast_window": 20,
+  "slow_window": 50
+}`,
+    response: `WWW-Authenticate: Bearer realm="backtesting-api"
+
+{
+  "error": {
+    "code": "unauthenticated",
+    "message": "Bearer token missing"
+  }
+}`,
+    note: "The first thing that happens to anyone who imports the collection, because the committed environments ship with an empty token. Worth rehearsing rather than avoiding - it is also the most common real onboarding ticket."
+  }
+];
+
+const SCENARIOS = [
+  { code: "401", name: "Token missing vs invalid", assertion: "code + message",
+    trigger: "Collection requests 3 and 4: the same call with no token, then with a wrong one. Both run against sandbox only.",
+    body: `{ "error": { "code": "unauthenticated",
+    "message": "Bearer token missing" } }`,
+    fix: "The two messages split the diagnosis. \"missing\" means no header arrived - usually the wrong environment is selected, or the request overrode collection auth. \"invalid\" means a token arrived and did not match, so the wiring is fine and only the value is wrong. That distinction is what turns this from a half-hour ticket into a two-minute one." },
+  { code: "422", name: "Invalid parameters", assertion: "fields[0].path",
+    trigger: "fast_window of 50 against a slow_window of 20 - valid JSON, impossible configuration.",
+    body: `{ "error": { "code": "validation_failed",
+    "fields": [ { "path": "fast_window",
+      "message": "must be less than slow_window" } ] } }`,
+    fix: "First written as a whole-model validator, which reported the path as the model rather than the field - the response said something was wrong without saying what. Moved to a field validator so the caller is pointed at the input to change." },
+  { code: "422", name: "Unknown symbol", assertion: "code + available list",
+    trigger: "A symbol with no data configured - the equivalent of a customer requesting a product they have not been enabled for.",
+    body: `{ "error": { "code": "unknown_symbol",
+    "message": "No price data for NOPE. Available: SYNTH" } }`,
+    fix: "The message lists what does exist, so the answer is in the response. \"Available: none\" means something different and more serious - the data directory resolved but was empty, which is our configuration problem, not the customer's request." },
+  { code: "400", name: "Malformed JSON", assertion: "error.code",
+    trigger: "A trailing comma left in the body after editing it by hand in Postman.",
+    body: `{ "error": { "code": "invalid_json",
+    "message": "Request body is not valid JSON" } }`,
+    fix: "400 rather than 422 is itself the signal: the body never reached the schema, so there is no field to name. A 422 with a field path means the JSON parsed and the values were wrong." },
+  { code: "500", name: "Unexpected server error", assertion: "request_id, no stack trace",
+    trigger: "Originally: starting the server with API_TOKEN unset. Configuration was read lazily, so a missing variable surfaced as an opaque 500 on the first request instead of a startup failure.",
+    body: `{ "error": { "code": "internal_error",
+    "request_id": "req_9e4635" } }`,
+    fix: "Configuration is now read at startup and the server refuses to start with a named error. The 500 handler stays, and is the escalation case: the body carries only an id, the traceback goes to the log under the same id, and the useful thing a customer can do is quote it." }
+];
+
+const CHECKS = [
+  { title: "Health check first", detail: "GET /health returns 200 and the environment you expect. If it says sandbox, you are not in production whatever the URL looks like." },
+  { title: "Environments separated", detail: "Sandbox and production as two Postman environment files, not one with an edited base_url." },
+  { title: "Tokens as secret variables", detail: "api_token typed secret and committed empty in both files. No token in the collection, a saved example, or a screenshot on a ticket." },
+  { title: "Different token per environment", detail: "Production and sandbox tokens differ, and the customer has been told which is which." },
+  { title: "Collection green against sandbox", detail: "6 requests, 23 assertions, no failures. This is where error handling is proved - breaking things in sandbox is free." },
+  { title: "Authorised test account", detail: "A production account created for this purpose, with no real customer data and no financial impact." },
+  { title: "Approved test payload and window", detail: "The smallest request that still proves the integration, agreed in advance with the customer and the service owner, at a time when someone can act." },
+  { title: "One approved production call", detail: "That single low-impact request, made from the test account inside the agreed window, and the response read and recorded. Nothing beyond it." },
+  { title: "Error shape matches", detail: "Production errors carry error.code, not an HTML page from a proxy sitting in front of the API." },
+  { title: "Customer briefed", detail: "Endpoint list, an example request and response, the error-code table, and what a request_id is for." },
+  { title: "Escalation path agreed", detail: "A named contact, and written criteria for what first-line resolves versus what goes to engineering." }
+];
+
+const FIELDS = {
+  steel: { bg: "var(--color-accent-900)", fg: "var(--color-bg)" },
+  paper: { bg: "var(--color-neutral-100)", fg: "var(--color-neutral-900)" }
+};
+
+class Component extends DCLogic {
+  state = { ep: 0, sc: 0, done: [] };
+
+  componentDidMount() { this.applyField(); }
+  componentDidUpdate(prev) {
+    if (prev.codeField !== this.props.codeField) this.applyField();
+  }
+  componentWillUnmount() {
+    const s = document.documentElement.style;
+    s.removeProperty("--code-bg");
+    s.removeProperty("--code-fg");
+  }
+  applyField() {
+    const f = FIELDS[this.props.codeField] || FIELDS.steel;
+    const s = document.documentElement.style;
+    s.setProperty("--code-bg", f.bg);
+    s.setProperty("--code-fg", f.fg);
+  }
+
+  renderVals() {
+    const { ep, sc, done } = this.state;
+    return {
+      active: ENDPOINTS[ep],
+      endpoints: ENDPOINTS.map((e, i) => ({
+        ...e,
+        bg: i === ep ? "var(--color-accent-200)" : "transparent",
+        pressed: i === ep ? "true" : "false",
+        select: () => this.setState({ ep: i })
+      })),
+      scenarios: SCENARIOS.map((s, i) => ({
+        ...s,
+        bg: i === sc ? "var(--color-accent-200)" : "transparent",
+        pressed: i === sc ? "true" : "false",
+        select: () => this.setState({ sc: i })
+      })),
+      activeScenario: SCENARIOS[sc],
+      checks: CHECKS.map((c, i) => {
+        const on = done.includes(i);
+        return {
+          ...c,
+          mark: on ? "✓" : "",
+          pressed: on ? "true" : "false",
+          bg: on ? "var(--color-accent-100)" : "transparent",
+          boxBg: on ? "var(--color-accent-300)" : "transparent",
+          toggle: () => this.setState(st => ({
+            done: st.done.includes(i) ? st.done.filter(x => x !== i) : st.done.concat(i)
+          }))
+        };
+      }),
+      doneCount: done.length,
+      totalCount: CHECKS.length,
+      resetChecks: () => this.setState({ done: [] })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
