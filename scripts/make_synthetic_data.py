@@ -1,8 +1,7 @@
 """Write data/SYNTH.csv - a deterministic fake price series.
 
 This is NOT market data and is not named after a real ticker. It exists so
-that tests and demos produce the same numbers on every machine. Real
-portfolio numbers come from scripts/fetch_prices.py instead.
+that tests and demos produce the same numbers on every machine.
 
     python scripts/make_synthetic_data.py
 """
