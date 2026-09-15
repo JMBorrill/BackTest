@@ -13,7 +13,9 @@ class BacktestRequest(BaseModel):
     # than a silently ignored field and a surprising result.
     model_config = ConfigDict(extra="forbid")
 
-    symbol: str = Field(min_length=1, max_length=16)
+    # The symbol becomes part of a filename, so restrict it to ticker
+    # characters here rather than sanitising it further down.
+    symbol: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$")
     start: date
     end: date
     # slow_window is declared first so that when fast_window is validated the

@@ -14,8 +14,13 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = logging.getLogger("backtesting.api")
+
+# Starlette raises these before any of our code runs, so they would
+# otherwise return its default {"detail": ...} body.
+FRAMEWORK_CODES = {404: "not_found", 405: "method_not_allowed"}
 
 
 class ApiError(Exception):
@@ -71,6 +76,16 @@ def install(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content=_body("validation_failed", "Request failed validation", fields),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _framework_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_body(
+                FRAMEWORK_CODES.get(exc.status_code, "http_error"), str(exc.detail)
+            ),
+            headers=getattr(exc, "headers", None),
         )
 
     @app.exception_handler(Exception)

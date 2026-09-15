@@ -11,7 +11,13 @@ from fastapi import Depends, FastAPI
 
 from backend import errors
 from backend.auth import require_token
-from backend.backtest import NotEnoughDataError, UnknownSymbolError, load_prices, run
+from backend.backtest import (
+    NoDataInRangeError,
+    NotEnoughDataError,
+    UnknownSymbolError,
+    load_prices,
+    run,
+)
 from backend.config import Settings, get_settings
 from backend.errors import ApiError
 from backend.schemas import BacktestRequest, BacktestResponse
@@ -48,12 +54,26 @@ def create_app() -> FastAPI:
             # A typed error, so a symbol the customer has not been enabled
             # for is a 422 they can act on rather than a 500 from pandas.
             raise ApiError(422, "unknown_symbol", str(exc)) from exc
+        except NoDataInRangeError as exc:
+            # The range is not short - it is empty. Different fix, so a
+            # different message.
+            raise ApiError(
+                422,
+                "validation_failed",
+                str(exc),
+                fields=[{"path": "start", "message": "no data in this date range"}],
+            ) from exc
         except NotEnoughDataError as exc:
             raise ApiError(
                 422,
                 "validation_failed",
                 str(exc),
-                fields=[{"path": "start", "message": "date range is too short"}],
+                fields=[
+                    {
+                        "path": "start",
+                        "message": "date range holds fewer bars than slow_window",
+                    }
+                ],
             ) from exc
 
         return BacktestResponse(symbol=payload.symbol.upper(), **result)

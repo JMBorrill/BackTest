@@ -16,6 +16,10 @@ class UnknownSymbolError(Exception):
     """No price file for the requested symbol."""
 
 
+class NoDataInRangeError(Exception):
+    """The symbol exists, but the requested date range contains no bars."""
+
+
 class NotEnoughDataError(Exception):
     """The date range has fewer bars than the slow moving average needs."""
 
@@ -41,7 +45,7 @@ def load_prices(symbol: str, start: str, end: str, data_dir: Path) -> pd.DataFra
     window = frame.set_index("date").sort_index().loc[str(start):str(end), ["close"]]
 
     if window.empty:
-        raise NotEnoughDataError(f"No {symbol.upper()} data between {start} and {end}")
+        raise NoDataInRangeError(f"No {symbol.upper()} data between {start} and {end}")
     return window
 
 
