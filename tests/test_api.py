@@ -71,13 +71,16 @@ def test_unknown_symbol_is_422_and_lists_what_is_available(client):
     assert "SYNTH" in response.json()["error"]["message"]
 
 
-def test_date_range_too_short_is_422(client):
+def test_date_range_too_short_names_the_slow_window(client):
     response = client.post(
         "/v1/backtests", json={**REQUEST, "start": "2020-01-01", "end": "2020-02-01"},
         headers=AUTH,
     )
     assert response.status_code == 422
-    assert response.json()["error"]["code"] == "validation_failed"
+
+    error = response.json()["error"]
+    assert error["code"] == "validation_failed"
+    assert error["fields"][0]["message"] == "date range holds fewer bars than slow_window"
 
 
 def test_malformed_json_is_400(client):
@@ -120,10 +123,64 @@ def test_unexpected_error_returns_an_id_not_a_stack_trace(client, monkeypatch):
     assert "Traceback" not in response.text
 
 
+def test_unknown_path_uses_the_same_error_envelope(client):
+    response = client.get("/nope")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+
+def test_wrong_method_uses_the_same_error_envelope(client):
+    response = client.get("/v1/backtests")
+    assert response.status_code == 405
+    assert response.json()["error"]["code"] == "method_not_allowed"
+
+
+def test_symbol_cannot_contain_a_path(client):
+    """A symbol becomes part of a filename, so a path is rejected by the
+    schema rather than reaching load_prices."""
+    response = client.post(
+        "/v1/backtests", json={**REQUEST, "symbol": "../data/SYNTH"}, headers=AUTH
+    )
+    assert response.status_code == 422
+
+    error = response.json()["error"]
+    assert error["code"] == "validation_failed"
+    assert error["fields"][0]["path"] == "symbol"
+
+
+def test_date_range_with_no_data_says_so(client):
+    """Empty is not the same problem as short, so it must not borrow the
+    short-range message."""
+    response = client.post(
+        "/v1/backtests",
+        json={**REQUEST, "start": "2030-01-01", "end": "2031-02-01"},
+        headers=AUTH,
+    )
+    assert response.status_code == 422
+
+    error = response.json()["error"]
+    assert error["fields"][0]["message"] == "no data in this date range"
+
+
 def test_missing_api_token_stops_the_app_starting(monkeypatch):
     from backend.config import ConfigError, get_settings
 
     monkeypatch.delenv("API_TOKEN", raising=False)
+    get_settings.cache_clear()
+    from backend.main import create_app
+
+    with pytest.raises(ConfigError) as caught:
+        create_app()
+    assert "API_TOKEN" in str(caught.value)
+    get_settings.cache_clear()
+
+
+def test_empty_api_token_stops_the_app_starting(monkeypatch):
+    """`cp .env.example .env` and nothing else leaves API_TOKEN empty. That
+    must fail at startup too, not start a server that 401s every call."""
+    from backend.config import ConfigError, get_settings
+
+    monkeypatch.setenv("API_TOKEN", "")
     get_settings.cache_clear()
     from backend.main import create_app
 

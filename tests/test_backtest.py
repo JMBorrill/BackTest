@@ -1,9 +1,14 @@
-"""The calculation. Five tests on series where the answer is known by hand."""
+"""The calculation: series where the answer is known by hand, plus one
+regression test pinning the published numbers for the shipped dataset."""
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from backend.backtest import NotEnoughDataError, UnknownSymbolError, load_prices, run
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 def frame(closes):
@@ -44,3 +49,25 @@ def test_unknown_symbol_lists_what_is_available(tmp_path):
     with pytest.raises(UnknownSymbolError) as caught:
         load_prices("NOPE", "2020-01-01", "2020-12-31", tmp_path)
     assert "SYNTH" in str(caught.value)
+
+
+@pytest.mark.skipif(
+    not (DATA_DIR / "SYNTH.csv").exists(),
+    reason="run scripts/make_synthetic_data.py first",
+)
+def test_synth_dataset_still_produces_the_published_numbers():
+    """The seeded dataset is identical on every machine, so these are fixed
+    values, not a range. They are the numbers quoted in the README. Any
+    change to the maths - dropping the position shift, for instance - moves
+    at least one of them and fails here."""
+    prices = load_prices("SYNTH", "2019-01-01", "2024-12-31", DATA_DIR)
+    result = run(prices, fast_window=20, slow_window=50)
+
+    assert result["bars"] == 1500
+    assert result["start"] == "2019-01-02"
+    assert result["end"] == "2024-10-01"
+    assert result["metrics"]["trades"] == 20
+    assert result["metrics"]["total_return"] == pytest.approx(-0.1908, abs=1e-4)
+    assert result["metrics"]["cagr"] == pytest.approx(-0.0349, abs=1e-4)
+    assert result["metrics"]["max_drawdown"] == pytest.approx(-0.3079, abs=1e-4)
+    assert result["benchmark"]["total_return"] == pytest.approx(0.1808, abs=1e-4)
